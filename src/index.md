@@ -76,10 +76,6 @@ const allTimeTotalDistance = d3.sum(aggregatedSportData, d => d.totalDistance);
 </div>
 ```
 
-### All-Time Charts
-
-#### All-Time Steps per Month Chart
-
 ```js
 const allTimeStepsChart = Plot.plot({
   title: "Pași per Lună - Toate Timpurile",
@@ -110,8 +106,6 @@ const allTimeStepsChart = Plot.plot({
 </div>
 ```
 
-#### All-Time Steps Distribution by Month Chart
-
 ```js
 const allTimeStepsHistogram = Plot.plot({
   title: "Distribuția Pașilor per Lună (Toate Timpurile)",
@@ -133,8 +127,6 @@ const allTimeStepsHistogram = Plot.plot({
   </div>
 </div>
 ```
-
-#### All-Time Cumulative Steps by Month Chart
 
 ```js
 const cumulativeAllTimeSteps = aggregatedActivityData.map((d, i) => ({
@@ -162,8 +154,6 @@ const allTimeCumulativeChart = Plot.plot({
   </div>
 </div>
 ```
-
-#### All-Time Steps Intensity by Month Heatmap
 
 ```js
 const allTimeHeatmapChart = Plot.plot({
