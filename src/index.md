@@ -7,7 +7,7 @@ toc: false
 # Vizualizare Date de Sănătate
 
 ```js
-import {Plot} from "@observablehq/plot";
+import {plot} from "@observablehq/plot";
 import * as d3 from "d3";
 
 // Load the data files
@@ -45,13 +45,13 @@ const totalDistance = d3.sum(cleanedSportData, d => d.total_distance);
 
 ```js
 // Visualization for Steps per Day
-const stepsChart = Plot.plot({
+const stepsChart = plot({
   title: "Pași pe Zi",
   height: 400,
   y: {grid: true, label: "Pași"},
   color: {scheme: "blues"},
   marks: [
-    Plot.barY(cleanedActivityData, {x: "day", y: "step", tip: true, fill: "steelblue"})
+    plot.barY(cleanedActivityData, {x: "day", y: "step", tip: true, fill: "steelblue"})
   ]
 });
 ```
@@ -66,13 +66,13 @@ const stepsChart = Plot.plot({
 
 ```js
 // Visualization for Distance per Day
-const distanceChart = Plot.plot({
+const distanceChart = plot({
   title: "Distanță Totală pe Zi",
   height: 400,
   y: {grid: true, label: "Distanță (m)"},
   color: {scheme: "greens"},
   marks: [
-    Plot.barY(cleanedSportData, {x: "day", y: "total_distance", tip: true, fill: "green"})
+    plot.barY(cleanedSportData, {x: "day", y: "total_distance", tip: true, fill: "green"})
   ]
 });
 ```
