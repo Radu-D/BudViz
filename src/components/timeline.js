@@ -1,19 +1,69 @@
-// Load JSON data
-fetch('../data/health_activity_data.json')
-  .then(response => response.json())
-  .then(healthActivityData => {
-    const cleanedActivityData = healthActivityData.filter(d => d.step > 0);
-    updateStepsDashboard(cleanedActivityData);
-    createStepsChart(cleanedActivityData);
+// Create Year and Month Selectors
+const yearSelector = document.createElement('select');
+yearSelector.id = 'yearSelector';
+const monthSelector = document.createElement('select');
+monthSelector.id = 'monthSelector';
+
+// Populate Year and Month Selectors
+function populateSelectors(data) {
+  const years = Array.from(new Set(data.map(d => d.year)));
+  const months = Array.from({ length: 12 }, (_, i) => i + 1);
+
+  years.forEach(year => {
+    const option = document.createElement('option');
+    option.value = year;
+    option.text = year;
+    yearSelector.appendChild(option);
   });
 
-fetch('../data/health_sport_data.json')
-  .then(response => response.json())
-  .then(healthSportData => {
-    const cleanedSportData = healthSportData.filter(d => d.total_step_count > 0);
-    updateDistanceDashboard(cleanedSportData);
-    createDistanceChart(cleanedSportData);
+  months.forEach(month => {
+    const option = document.createElement('option');
+    option.value = month;
+    option.text = month;
+    monthSelector.appendChild(option);
   });
+
+  document.body.prepend(monthSelector);
+  document.body.prepend(yearSelector);
+}
+
+// Fetch and Filter Data
+Promise.all([
+  fetch('../data/health_activity_data.json').then(response => response.json()),
+  fetch('../data/health_sport_data.json').then(response => response.json())
+]).then(([healthActivityData, healthSportData]) => {
+  populateSelectors(healthActivityData); // Populate selectors with initial data
+  
+  const filteredActivityData = filterData(healthActivityData);
+  const filteredSportData = filterData(healthSportData);
+
+  updateStepsDashboard(filteredActivityData);
+  createStepsChart(filteredActivityData);
+  updateDistanceDashboard(filteredSportData);
+  createDistanceChart(filteredSportData);
+
+  // Add Event Listeners for selectors
+  yearSelector.addEventListener('change', () => updateVisualizations(healthActivityData, healthSportData));
+  monthSelector.addEventListener('change', () => updateVisualizations(healthActivityData, healthSportData));
+});
+
+// Function to filter data based on the selected year and month
+function filterData(data) {
+  const selectedYear = parseInt(document.getElementById('yearSelector').value, 10);
+  const selectedMonth = parseInt(document.getElementById('monthSelector').value, 10);
+  return data.filter(d => d.year === selectedYear && d.month === selectedMonth);
+}
+
+// Update visualizations when selectors change
+function updateVisualizations(healthActivityData, healthSportData) {
+  const filteredActivityData = filterData(healthActivityData);
+  const filteredSportData = filterData(healthSportData);
+
+  updateStepsDashboard(filteredActivityData);
+  updateDistanceDashboard(filteredSportData);
+  createStepsChart(filteredActivityData);
+  createDistanceChart(filteredSportData);
+}
 
 // Function to update steps dashboard
 function updateStepsDashboard(data) {
@@ -33,6 +83,7 @@ function updateDistanceDashboard(data) {
 
 // Function to create Steps per Day Chart
 function createStepsChart(data) {
+  d3.select("#stepsChart").selectAll("*").remove(); // Clear previous chart
   const margin = { top: 40, right: 30, bottom: 60, left: 60 };
   const width = 1000;
   const height = 500;
@@ -95,6 +146,7 @@ function createStepsChart(data) {
 
 // Function to create Distance Over Days Chart
 function createDistanceChart(data) {
+  d3.select("#distanceChart").selectAll("*").remove(); // Clear previous chart
   const margin = { top: 40, right: 30, bottom: 60, left: 60 };
   const width = 1000;
   const height = 500;

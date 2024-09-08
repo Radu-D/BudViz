@@ -6,52 +6,98 @@ toc: false
 
 # Vizualizare Date de Sănătate
 
+<!-- Year Selector -->
+<div style="margin-bottom: 20px;">
+  <button onclick="window.location.href = './year-2022'">2022</button>
+  <button onclick="window.location.href = './year-2023'">2023</button>
+  <button onclick="window.location.href = './year-2024'">2024</button>
+</div>
+
+## Statistici Generale
+
 ```js
-import {plot} from "@observablehq/plot";
+import * as Plot from "@observablehq/plot";
 import * as d3 from "d3";
 
 // Load the data files
 const healthActivityData = await d3.json("https://raw.githubusercontent.com/Radu-D/budviz/main/src/data/health_activity_data.json");
 const healthSportData = await d3.json("https://raw.githubusercontent.com/Radu-D/budviz/main/src/data/health_sport_data.json");
 
-// Clean and filter the data
-const cleanedActivityData = healthActivityData.filter(d => d.step > 0);
-const cleanedSportData = healthSportData.filter(d => d.total_step_count > 0);
+// Aggregate data by month and year
+const monthlyActivityData = d3.rollups(
+  healthActivityData,
+  v => ({
+    totalSteps: d3.sum(v, d => d.step),
+    averageSteps: d3.mean(v, d => d.step)
+  }),
+  d => `${d.year}-${d.month}`
+);
 
-// Compute summary statistics
-const totalSteps = d3.sum(cleanedActivityData, d => d.step);
-const averageSteps = (totalSteps / cleanedActivityData.length).toFixed(0);
-const totalDistance = d3.sum(cleanedSportData, d => d.total_distance);
+const monthlySportData = d3.rollups(
+  healthSportData,
+  v => ({
+    totalDistance: d3.sum(v, d => d.total_distance),
+    totalSteps: d3.sum(v, d => d.total_step_count)
+  }),
+  d => `${d.year}-${d.month}`
+);
+
+// Convert aggregated data into a flat array
+const aggregatedActivityData = monthlyActivityData.map(([key, value]) => ({
+  month: key,
+  ...value
+}));
+
+const aggregatedSportData = monthlySportData.map(([key, value]) => ({
+  month: key,
+  ...value
+}));
+
+// Compute all-time statistics
+const allTimeTotalSteps = d3.sum(aggregatedActivityData, d => d.totalSteps);
+const allTimeAverageSteps = (allTimeTotalSteps / aggregatedActivityData.length).toFixed(0);
+const allTimeTotalDistance = d3.sum(aggregatedSportData, d => d.totalDistance);
 ```
-
-<!-- Dashboard cards with summary metrics -->
 
 ```html
 <div class="grid grid-cols-3">
   <div class="card">
-    <h2>Total Pași</h2>
-    <span class="big">${totalSteps.toLocaleString("ro-RO")}</span>
+    <h2>Total Pași (Toate Timpurile)</h2>
+    <span class="big">${allTimeTotalSteps.toLocaleString("fr-CA")}</span>
   </div>
   <div class="card">
-    <h2>Pași Medii/zi</h2>
-    <span class="big">${averageSteps.toLocaleString("ro-RO")}</span>
+    <h2>Pași Medii/Lună (Toate Timpurile)</h2>
+    <span class="big">${allTimeAverageSteps.toLocaleString("fr-CA")}</span>
   </div>
   <div class="card">
-    <h2>Distanță Totală</h2>
-    <span class="big">${totalDistance.toLocaleString("ro-RO")} m</span>
+    <h2>Distanță Totală (Toate Timpurile)</h2>
+    <span class="big">${allTimeTotalDistance.toLocaleString("fr-CA")} m</span>
   </div>
 </div>
 ```
 
+### All-Time Charts
+
+#### All-Time Steps per Month Chart
+
 ```js
-// Visualization for Steps per Day
-const stepsChart = plot({
-  title: "Pași pe Zi",
-  height: 400,
-  y: {grid: true, label: "Pași"},
-  color: {scheme: "blues"},
+const allTimeStepsChart = Plot.plot({
+  title: "Pași per Lună - Toate Timpurile",
+  width: 1000,
+  height: 600,
+  marginBottom: 50,
+  x: {
+    domain: aggregatedActivityData.map(d => d.month),
+    label: "Luna",
+  },
+  y: {
+    grid: true,
+    label: "Pași",
+  },
   marks: [
-    plot.barY(cleanedActivityData, {x: "day", y: "step", tip: true, fill: "steelblue"})
+    Plot.barY(aggregatedActivityData, { x: "month", y: "totalSteps", fill: "steelblue" }),
+    Plot.line(aggregatedActivityData, { x: "month", y: "totalSteps", stroke: "red", strokeWidth: 2 }),
+    Plot.dot(aggregatedActivityData, { x: "month", y: "totalSteps", fill: "red", r: 4 })
   ]
 });
 ```
@@ -59,20 +105,23 @@ const stepsChart = plot({
 ```html
 <div class="grid grid-cols-1">
   <div class="card">
-    ${stepsChart}
+    ${allTimeStepsChart}
   </div>
 </div>
 ```
 
+#### All-Time Steps Distribution by Month Chart
+
 ```js
-// Visualization for Distance per Day
-const distanceChart = plot({
-  title: "Distanță Totală pe Zi",
-  height: 400,
-  y: {grid: true, label: "Distanță (m)"},
-  color: {scheme: "greens"},
+const allTimeStepsHistogram = Plot.plot({
+  title: "Distribuția Pașilor per Lună (Toate Timpurile)",
+  width: 1000,
+  height: 600,
+  y: { grid: true, label: "Frecvență" },
+  x: { label: "Pași", grid: true },
   marks: [
-    plot.barY(cleanedSportData, {x: "day", y: "total_distance", tip: true, fill: "green"})
+    Plot.rectY(aggregatedActivityData, Plot.binX({ y: "count" }, { x: "totalSteps", fill: "green" })),
+    Plot.ruleY([0])
   ]
 });
 ```
@@ -80,7 +129,59 @@ const distanceChart = plot({
 ```html
 <div class="grid grid-cols-1">
   <div class="card">
-    ${distanceChart}
+    ${allTimeStepsHistogram}
+  </div>
+</div>
+```
+
+#### All-Time Cumulative Steps by Month Chart
+
+```js
+const cumulativeAllTimeSteps = aggregatedActivityData.map((d, i) => ({
+  month: d.month,
+  cumulative: d3.sum(aggregatedActivityData.slice(0, i + 1), d => d.totalSteps)
+}));
+
+const allTimeCumulativeChart = Plot.plot({
+  title: "Cumulativ Pași per Lună (Toate Timpurile)",
+  width: 1000,
+  height: 600,
+  y: { grid: true, label: "Pași Cumulativi" },
+  x: { label: "Luna", domain: cumulativeAllTimeSteps.map(d => d.month) },
+  marks: [
+    Plot.line(cumulativeAllTimeSteps, { x: "month", y: "cumulative", stroke: "orange", strokeWidth: 2 }),
+    Plot.dot(cumulativeAllTimeSteps, { x: "month", y: "cumulative", fill: "orange", r: 4 })
+  ]
+});
+```
+
+```html
+<div class="grid grid-cols-1">
+  <div class="card">
+    ${allTimeCumulativeChart}
+  </div>
+</div>
+```
+
+#### All-Time Steps Intensity by Month Heatmap
+
+```js
+const allTimeHeatmapChart = Plot.plot({
+  title: "Intensitatea Pașilor per Lună (Toate Timpurile)",
+  width: 1000,
+  height: 600,
+  x: { label: "Luna", domain: aggregatedActivityData.map(d => d.month) },
+  color: { scheme: "reds" },
+  marks: [
+    Plot.cell(aggregatedActivityData, { x: "month", y: "averageSteps", fill: "totalSteps" })
+  ]
+});
+```
+
+```html
+<div class="grid grid-cols-1">
+  <div class="card">
+    ${allTimeHeatmapChart}
   </div>
 </div>
 ```
